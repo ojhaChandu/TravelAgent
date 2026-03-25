@@ -215,9 +215,13 @@ You: "I found 5 great flights from NYC to Paris! Here are the top options: [expl
                             break
                 else:
                     # Agent provided final text response
+                    # Check if agent is asking for input (interactive prompt detection)
+                    interactive_prompt = self._detect_interactive_prompt(agent_response)
+                    
                     yield {
                         "type": "response",
-                        "content": agent_response
+                        "content": agent_response,
+                        "interactive_prompt": interactive_prompt
                     }
                     break
                     
@@ -273,6 +277,68 @@ You: "I found 5 great flights from NYC to Paris! Here are the top options: [expl
                     break
         
         return None
+    
+    def _detect_interactive_prompt(self, response: str) -> Optional[Dict]:
+        """
+        Detect if agent is asking for specific input and return interactive prompt config
+        Returns prompt config dict or None
+        """
+        response_lower = response.lower()
+        
+        # Detect date questions
+        if any(keyword in response_lower for keyword in ['what date', 'which date', 'when do you want', 'departure date', 'return date', 'check-in', 'check-out']):
+            return {
+                "type": "date",
+                "label": "Select a date",
+                "placeholder": "Choose your travel date"
+            }
+        
+        # Detect budget questions
+        if any(keyword in response_lower for keyword in ['what is your budget', 'maximum budget', 'how much', 'price range', 'budget limit']):
+            return {
+                "type": "budget",
+                "label": "What's your budget?",
+                "min": 100,
+                "max": 10000,
+                "step": 100,
+                "default": 1000
+            }
+        
+        # Detect number of travelers
+        if any(keyword in response_lower for keyword in ['how many', 'number of passengers', 'number of guests', 'how many people', 'travelers']):
+            return {
+                "type": "number",
+                "label": "Number of travelers",
+                "placeholder": "Enter number",
+                "min": 1,
+                "max": 20,
+                "default": 1
+            }
+        
+        # Detect location/city questions
+        if any(keyword in response_lower for keyword in ['which city', 'what destination', 'where do you want', 'origin city', 'departure city']):
+            return {
+                "type": "text",
+                "label": "Enter city name",
+                "placeholder": "e.g., New York, Paris, Tokyo"
+            }
+        
+        # Detect preference selections (class, meal type, etc.)
+        if 'class' in response_lower and any(word in response_lower for word in ['economy', 'business', 'first']):
+            return {
+                "type": "select",
+                "label": "Preferred seat class",
+                "placeholder": "Select class",
+                "options": [
+                    {"value": "economy", "label": "Economy"},
+                    {"value": "premium_economy", "label": "Premium Economy"},
+                    {"value": "business", "label": "Business"},
+                    {"value": "first", "label": "First Class"}
+                ]
+            }
+        
+        return None
+
     
     def get_state_snapshot(self) -> Dict:
         """Get current state for MongoDB persistence"""

@@ -30,12 +30,18 @@ const ChatInterface = ({ user }) => {
 
   useEffect(scrollToBottom, [messages]);
 
-  const sendMessage = async () => {
-    if (!input.trim() || isStreaming) return;
+  const handlePromptResponse = (value) => {
+    // User responded to an interactive prompt
+    sendMessage(value);
+  };
+
+  const sendMessage = async (messageText = null) => {
+    const textToSend = messageText || input;
+    if (!textToSend.trim() || isStreaming) return;
 
     const userMessage = {
       role: 'user',
-      content: input,
+      content: textToSend,
       timestamp: new Date().toISOString()
     };
 
@@ -49,7 +55,7 @@ const ChatInterface = ({ user }) => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           user_id: user.id,
-          message: input,
+          message: textToSend,
           session_id: sessionId
         })
       });
@@ -78,6 +84,7 @@ const ChatInterface = ({ user }) => {
                 setAgentStatus(event);
               } else if (event.type === 'response') {
                 assistantMessage.content = event.content;
+                assistantMessage.interactive_prompt = event.interactive_prompt;
                 setMessages(prev => [...prev.filter(m => m.role !== 'assistant' || m.content), assistantMessage]);
               } else if (event.type === 'interrupt') {
                 // HITL interrupt - switch to transaction mode
@@ -176,7 +183,7 @@ const ChatInterface = ({ user }) => {
                 </div>
               </div>
             )}
-            <MessageList messages={messages} />
+            <MessageList messages={messages} onPromptResponse={handlePromptResponse} />
             {agentStatus && <AgentStatus status={agentStatus} />}
             <div ref={messagesEndRef} />
           </div>
